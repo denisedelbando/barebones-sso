@@ -6,6 +6,8 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using System.Web;
+using System;
+using Newtonsoft.Json;
 
 namespace barebones_sso.Controllers
 {
@@ -314,34 +316,55 @@ namespace barebones_sso.Controllers
             return RedirectToAction("VerifyCode", new { Provider = model.SelectedProvider, ReturnUrl = model.ReturnUrl, RememberMe = model.RememberMe });
         }
 
+        
+
         //
         // GET: /Account/ExternalLoginCallback
         [AllowAnonymous]
         public async Task<ActionResult> ExternalLoginCallback(string returnUrl)
         {
-            var loginInfo = await AuthenticationManager.GetExternalLoginInfoAsync();
-            if (loginInfo == null)
-            {
-                return RedirectToAction("Login");
-            }
+            //var loginInfo = await AuthenticationManager.GetExternalLoginInfoAsync();
+            var result = await AuthenticationManager.AuthenticateAsync(DefaultAuthenticationTypes.ExternalCookie);
 
-            // Sign in the user with this external login provider if the user already has a login
-            var result = await SignInManager.ExternalSignInAsync(loginInfo, isPersistent: false);
-            switch (result)
+            JsonSerializerSettings settings = new JsonSerializerSettings();
+            settings.ReferenceLoopHandling = ReferenceLoopHandling.Ignore;
+            settings.NullValueHandling = NullValueHandling.Include;
+
+            if (result == null)
+                return Json(new
+                {
+                    newssage = "Still no :(" + DateTime.Now
+                }, JsonRequestBehavior.AllowGet);
+            else
             {
-                case SignInStatus.Success:
-                    return RedirectToLocal(returnUrl);
-                case SignInStatus.LockedOut:
-                    return View("Lockout");
-                case SignInStatus.RequiresVerification:
-                    return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = false });
-                case SignInStatus.Failure:
-                default:
-                    // If the user does not have an account, then prompt the user to create an account
-                    ViewBag.ReturnUrl = returnUrl;
-                    ViewBag.LoginProvider = loginInfo.Login.LoginProvider;
-                    return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = loginInfo.Email });
+                return Json(new
+                {
+                    result = JsonConvert.SerializeObject(result, settings),
+                    newssage = "Yey :(" + DateTime.Now
+                }, JsonRequestBehavior.AllowGet);
             }
+            //if (loginInfo == null)
+            //{
+            //    return RedirectToAction("Login");
+            //}
+
+            //// Sign in the user with this external login provider if the user already has a login
+            //var result = await SignInManager.ExternalSignInAsync(loginInfo, isPersistent: false);
+            //switch (result)
+            //{
+            //    case SignInStatus.Success:
+            //        return RedirectToLocal(returnUrl);
+            //    case SignInStatus.LockedOut:
+            //        return View("Lockout");
+            //    case SignInStatus.RequiresVerification:
+            //        return RedirectToAction("SendCode", new { ReturnUrl = returnUrl, RememberMe = false });
+            //    case SignInStatus.Failure:
+            //    default:
+            //        // If the user does not have an account, then prompt the user to create an account
+            //        ViewBag.ReturnUrl = returnUrl;
+            //        ViewBag.LoginProvider = loginInfo.Login.LoginProvider;
+            //        return View("ExternalLoginConfirmation", new ExternalLoginConfirmationViewModel { Email = loginInfo.Email });
+            //}
         }
 
         //
